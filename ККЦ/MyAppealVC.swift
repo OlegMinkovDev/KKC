@@ -15,25 +15,25 @@ class MyAppealVC: UIViewController, UICollectionViewDelegate, UICollectionViewDa
     var contacts = [Contact]()
     var currentContact = Contact()
     
-    var imageCashe = NSCache<AnyObject, AnyObject>()
+    var currentContactIndex = 0
+    var headers = [String : String]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
 
+        headers = getHeaders()
+        
         title = "Мої звернення"
+        
+        getContacts()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         navigationController?.setNavigationBarHidden(false, animated: true)
-        contacts = SettingManager.shered.getContacts()
-        
-        /*for (index, contact) in contacts.enumerated() {
-            getImage(by: contact.id!, index: index)
-        }*/
-        
-        //getImage(by: 822, index: 0)
     }
     
     // MARK: - UI Methods
@@ -59,11 +59,14 @@ class MyAppealVC: UIViewController, UICollectionViewDelegate, UICollectionViewDa
         
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "myAppealCell", for: indexPath) as! MyAppealCell
         
+        if let contactId = contacts[indexPath.row].id  {
+            print("contact id:", contactId)
+        }
+        
         if let images = contacts[indexPath.row].images, images.count > 0 {
             cell.photoImageView.image = images[0]
-        } else if let contactId = contacts[indexPath.row].id  {
+        } else {
             cell.photoImageView.image = UIImage(named: "noImage")
-            getImage(by: contactId, index: indexPath.row)
         }
         
         var contactType = ContactType()
@@ -93,6 +96,10 @@ class MyAppealVC: UIViewController, UICollectionViewDelegate, UICollectionViewDa
                 nameAppeal += " " + problemName
             }
         }
+        
+        if contacts[indexPath.row].approved == 0 {
+            cell.examinedAppealLabel.text = "Нове"
+        } else { cell.examinedAppealLabel.text = "" }
         
         cell.nameAppealLabel.text = nameAppeal
         cell.statusLabel.text = status
@@ -137,42 +144,72 @@ class MyAppealVC: UIViewController, UICollectionViewDelegate, UICollectionViewDa
         }
     }
     
-    func getImage(by id: Int, index: Int) {
+    func getContacts() {
         
-        let credintial = SettingManager.shered.getCredential()
+        NetworkManager.shared.getContacts(headers: SettingManager.HEADERS, completion: { (response, error) in
+            
+            guard error == nil, response != nil else {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+                return
+            }
+            
+            let contactArray = response!["list"] as! [NSDictionary]
+            for dictionary in contactArray {
+                
+                let contact = Contact(dictionary: dictionary)
+                self.contacts.append(contact)
+            }
+            
+            DispatchQueue.main.async {
+                self.collectionView.reloadData()
+            }
+            
+            SettingManager.shered.saveContacts(contacts: self.contacts)
+            
+            self.getImage()
+        })
+    }
+    
+    func getImage() {
         
-        let stringToConvert = "\(credintial!.token!):"
-        if let data = stringToConvert.data(using: .utf8) {
+        if currentContactIndex < contacts.count {
             
-            let base64String = "BASIC " + data.base64EncodedString()
+            if let contactId = contacts[currentContactIndex].id {
             
-            let headers = ["Authorization" : base64String, "API-KEY" : "\(credintial!.apiKey!)", "Accept" : "application/json", "Content-Type" : "application/json"]
-            
-            NetworkManager.shared.getImages(by: id, headers: headers, completion: { (response, error) in
-                
-                guard error == nil, response != nil else {
-                    ErrorManager.shered.handleAnError(error: error, viewController: self)
-                    return
-                }
-                
-                if let images = response!["list"] as? [NSDictionary], images.count > 0 {
+                NetworkManager.shared.getImages(by: contactId, headers: headers, completion: { (response, error) in
                     
-                    self.contacts[index].images = []
-                    for dictionary in images {
+                    guard error == nil, response != nil else {
+                        ErrorManager.shered.handleAnError(error: error, viewController: self)
+                        return
+                    }
+                    
+                    if let images = response!["list"] as? [NSDictionary], images.count > 0 {
                         
-                        if let base64image = dictionary["ContentBase64"] as? String {
+                        self.contacts[self.currentContactIndex].images = []
+                        for dictionary in images {
                             
-                            if let image = self.decode(base64String: base64image) {
-                                self.contacts[index].images?.append(image)
+                            if let base64image = dictionary["ContentBase64"] as? String {
+                                
+                                if let image = self.decode(base64String: base64image) {
+                                    self.contacts[self.currentContactIndex].images?.append(image)
+                                }
                             }
                         }
+                        
+                        self.currentContactIndex += 1
+                        
+                        DispatchQueue.main.async {
+                            self.collectionView.reloadData()
+                            self.getImage()
+                        }
                     }
-                    
-                    DispatchQueue.main.async {
-                        self.collectionView.reloadData()
-                    }
-                }
-            })
+                })
+            }
+        
+        } else {
+            
+            UIApplication.shared.isNetworkActivityIndicatorVisible = false
+            print("END!!!")
         }
     }
     
@@ -185,6 +222,23 @@ class MyAppealVC: UIViewController, UICollectionViewDelegate, UICollectionViewDa
         }
         
         return nil
+    }
+    
+    func getHeaders() -> [String : String] {
+        
+        let credintial = SettingManager.shered.getCredential()
+        
+        let stringToConvert = "\(credintial!.token!):"
+        if let data = stringToConvert.data(using: .utf8) {
+            
+            let base64String = "BASIC " + data.base64EncodedString()
+            
+            let headers = ["Authorization" : base64String, "API-KEY" : "\(credintial!.apiKey!)", "Accept" : "application/json", "Content-Type" : "application/json"]
+            
+            return headers
+        }
+        
+        return [:]
     }
     
     override func didReceiveMemoryWarning() {

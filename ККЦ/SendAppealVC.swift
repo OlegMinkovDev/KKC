@@ -11,6 +11,10 @@ import CoreLocation
 
 class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource, UITextFieldDelegate, CLLocationManagerDelegate, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
     
+    let APPEAL_ALERT_HEIGHT:CGFloat = 110
+    let WHOLE_CONTENT_TOP:CGFloat = 210
+    let COLLECTION_VIEW_HEIGHT:CGFloat = 90
+    
     @IBOutlet weak var scrollView: UIScrollView!
     @IBOutlet weak var collectionView: UICollectionView!
     
@@ -18,29 +22,29 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
     @IBOutlet weak var streetTextField: UITextField!
     @IBOutlet weak var houseTextField: UITextField!
     @IBOutlet weak var flatTextField: UITextField!
+    
     @IBOutlet weak var derectionAppealTextField: UITextField!
     @IBOutlet weak var eventTypeTextField: UITextField!
     @IBOutlet weak var describeProblemTextField: UITextField!
-    @IBOutlet weak var appealTypeTextField: UITextField!
-    
-    @IBOutlet weak var extraDistrictTextField: UITextField!
-    @IBOutlet weak var extraStreetTextField: UITextField!
-    @IBOutlet weak var extraHouseTextField: UITextField!
-    @IBOutlet weak var extraFlatTextField: UITextField!
     
     @IBOutlet weak var indicateAddressSwitch: UISwitch!
     @IBOutlet weak var placeProblemEqualAddressSwitch: UISwitch!
     @IBOutlet weak var autoIdentifyAddressSwitch: UISwitch!
     @IBOutlet weak var showOnSiteSwitch: UISwitch!
     
+    @IBOutlet weak var sendAppealButton: UIButton!
+    
     @IBOutlet weak var takePhotoImageView: UIImageView!
     @IBOutlet weak var addPhotoImageView: UIImageView!
     @IBOutlet weak var imageToSend: UIImageView!
     
-    @IBOutlet weak var extraView: UIView!
-    @IBOutlet weak var extraConstraint: NSLayoutConstraint!
-    @IBOutlet weak var extraConstraintSwitch: NSLayoutConstraint!
+    @IBOutlet weak var addressView: UIView!
+    @IBOutlet weak var appealAlertView: UIView!
+    
+    @IBOutlet weak var placeProblemTopConstraint: NSLayoutConstraint!
     @IBOutlet weak var collectionViewConstraint: NSLayoutConstraint!
+    @IBOutlet weak var appealAlertHeightConstraint: NSLayoutConstraint!
+    @IBOutlet weak var wholeContentTopConstraint: NSLayoutConstraint!
     
     var activeField: UITextField?
     var pickerView = UIPickerView()
@@ -55,6 +59,7 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
     var pickerData = [String]()
     var collectionData = [UIImage]()
     let screenSize = UIScreen.main.bounds
+    var myProfile = Profile()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -66,16 +71,10 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         derectionAppealTextField.inputAccessoryView = picker.accessoryView
         eventTypeTextField.inputView = picker.pickerView
         eventTypeTextField.inputAccessoryView = picker.accessoryView
-        appealTypeTextField.inputView = picker.pickerView
-        appealTypeTextField.inputAccessoryView = picker.accessoryView
         districtTextField.inputView = picker.pickerView
         districtTextField.inputAccessoryView = picker.accessoryView
         streetTextField.inputView = picker.pickerView
         streetTextField.inputAccessoryView = picker.accessoryView
-        extraDistrictTextField.inputView = picker.pickerView
-        extraDistrictTextField.inputAccessoryView = picker.accessoryView
-        extraStreetTextField.inputView = picker.pickerView
-        extraStreetTextField.inputAccessoryView = picker.accessoryView
         
         eventTypeTextField.isEnabled = false
         
@@ -87,13 +86,12 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         takePhotoImageView.addGestureRecognizer(takePhotoTap)
         addPhotoImageView.addGestureRecognizer(addPhotoTap)
         
-        placeProblemEqualAddressSwitch.addTarget(self, action: #selector(showHideExtraField), for: .valueChanged)
-        indicateAddressSwitch.addTarget(self, action: #selector(enableDisableAddressField), for: .valueChanged)
+        indicateAddressSwitch.addTarget(self, action: #selector(showHideAddressView), for: .valueChanged)
+        placeProblemEqualAddressSwitch.addTarget(self, action: #selector(getUserAddress), for: .valueChanged)
         autoIdentifyAddressSwitch.addTarget(self, action: #selector(identifyLocation), for: .valueChanged)
         
-        extraView.isHidden = false
-        extraConstraint.constant = 290
-        extraConstraintSwitch.constant = 299
+        addressView.isHidden = false
+        placeProblemTopConstraint.constant = 250
         
         let screenSingleTap = UITapGestureRecognizer(target: self, action: #selector(screenTapAction))
         view.addGestureRecognizer(screenSingleTap)
@@ -111,6 +109,33 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         
         navigationController?.setNavigationBarHidden(false, animated: true)
         title = "Надіслати звернення"
+        
+        getMyProfile { (result) in
+            
+            if result {
+                
+                self.appealAlertHeightConstraint.constant = self.APPEAL_ALERT_HEIGHT
+                self.sendAppealButton.isEnabled = false
+                self.placeProblemEqualAddressSwitch.isEnabled = false
+                
+                DispatchQueue.main.async {
+                    self.appealAlertView.isHidden = false
+                    self.scrollView.contentSize = CGSize(width: self.scrollView.contentSize.width, height: self.scrollView.contentSize.height + self.APPEAL_ALERT_HEIGHT)
+                    self.view.layoutIfNeeded()
+                }
+                
+            } else {
+                
+                self.appealAlertHeightConstraint.constant = 0
+                self.sendAppealButton.isEnabled = true
+                self.placeProblemEqualAddressSwitch.isEnabled = true
+                
+                DispatchQueue.main.async {
+                    self.appealAlertView.isHidden = true
+                    self.view.layoutIfNeeded()
+                }
+            }
+        }
     }
     
     // MARK: - UI Methods
@@ -146,40 +171,64 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         }
     }
     
-    @objc func showHideExtraField(_ sender: UISwitch) {
+    // MARK: - UISWitch Events
+    @objc func showHideAddressView(_ sender: UISwitch) {
+        
+        
         
         if sender.isOn {
             
-            self.extraView.isHidden = true
-            self.extraConstraint.constant = 10
-            self.extraConstraintSwitch.constant = 19
+            placeProblemTopConstraint.constant = 250
+            let height = collectionView.isHidden ? 960 : 960 + self.COLLECTION_VIEW_HEIGHT
+            scrollView.contentSize = CGSize(width: scrollView.contentSize.width, height: height)
+            
+            placeProblemEqualAddressSwitch.setOn(false, animated: true)
+            autoIdentifyAddressSwitch.setOn(false, animated: true)
             
             UIView.animate(withDuration: 0.3) {
+                self.addressView.alpha = 1
                 self.view.layoutIfNeeded()
             }
             
         } else {
             
-            self.extraView.isHidden = false
-            self.extraConstraint.constant = 290
-            self.extraConstraintSwitch.constant = 299
+            placeProblemTopConstraint.constant = 10
+            let height = collectionView.isHidden ? 727 : 727 + self.COLLECTION_VIEW_HEIGHT
+            scrollView.contentSize = CGSize(width: scrollView.contentSize.width, height: height)
             
             UIView.animate(withDuration: 0.3) {
+                self.addressView.alpha = 0
                 self.view.layoutIfNeeded()
             }
         }
     }
     
-    @objc func enableDisableAddressField(_ sender: UISwitch) {
+    @objc func getUserAddress(_ sender: UISwitch) {
         
         if sender.isOn {
-            setEnabledTextFields(isEnable: true)
-        } else { setEnabledTextFields(isEnable: false) }
+            
+            indicateAddressSwitch.setOn(false, animated: true)
+            autoIdentifyAddressSwitch.setOn(false, animated: true)
+            
+            showHideAddressView(indicateAddressSwitch)
+            
+            let street = SettingManager.shered.getStreet(by: myProfile.street!)
+            streetTextField.text = street?.name
+            districtTextField.text = street?.districtionName
+            houseTextField.text = myProfile.house
+            flatTextField.text = myProfile.flat
+            
+        } else { }
     }
     
     @objc func identifyLocation(_ sender: UISwitch) {
         
         if sender.isOn {
+            
+            placeProblemEqualAddressSwitch.setOn(false, animated: true)
+            indicateAddressSwitch.setOn(false, animated: true)
+            
+            showHideAddressView(indicateAddressSwitch)
             
             // Ask for Authorisation from the User.
             self.locationManager.requestAlwaysAuthorization()
@@ -195,43 +244,46 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         }
     }
     
+    // MARK: -
     @objc func screenTapAction() {
         view.endEditing(true)
     }
     
     @IBAction func sendAppeal(_ sender: Any) {
         
+        showLoadingView()
+        
         var parameters = [String: Any]()
         
         guard let derectionAppeal = derectionAppealTextField.text, derectionAppeal != "" else {
+            hideLoadingView()
             showAlert(withTitle: "Помилка", message: "Поле направлення звернення має бути заповнено")
             return
         }
         guard let eventType = eventTypeTextField.text, eventType != "" else {
+            hideLoadingView()
             showAlert(withTitle: "Помилка", message: "Поле тип події має бути заповнено")
             return
         }
-        guard let appealType = appealTypeTextField.text, appealType != "" else {
-            showAlert(withTitle: "Помилка", message: "Поле тип звернення має бути заповнено")
-            return
-        }
         guard let describeProblem = describeProblemTextField.text, describeProblem != "" else {
+            hideLoadingView()
             showAlert(withTitle: "Помилка", message: "Поле опис проблеми має бути заповнено")
             return
         }
         
-        if let extraDistrict = extraDistrictTextField.text, extraDistrict != "", let extraStreet = extraStreetTextField.text, extraStreet != "", let extraHouse = extraHouseTextField.text, extraHouse != "" {
+        if let district = districtTextField.text, district != "", let street = streetTextField.text, street != "", let house = houseTextField.text, house != "" {
             
-            let street = SettingManager.shered.getStreet(by: extraStreet)
-            parameters["street_id"] = street?.id!
-            parameters["house"] = extraHouse
+            let currentStreet = SettingManager.shered.getStreet(by: street)
+            parameters["street_id"] = currentStreet?.id!
+            parameters["house"] = house
             
         } else if let lat = latitude, let lng = longitude {
-         
+            
             parameters["lat"] = lat
             parameters["lng"] = lng
-        
+            
         } else {
+            hideLoadingView()
             showAlert(withTitle: "Помилка", message: "Адреса проблеми повинна бути заповнена")
         }
         
@@ -257,40 +309,30 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         let cause = SettingManager.shered.getCause(by: eventType)
         parameters["cause_id"] = cause?.id!
         
-        let listOfTypes = SettingManager.shered.getContactType(by: appealType)
-        parameters["type_id"] = listOfTypes?.id!
-        
         parameters["cityid"] = SettingManager.shered.getCityId()
         
-        let credintial = SettingManager.shered.getCredential()
-        
-        let stringToConvert = "\(credintial!.token!):"
-        if let data = stringToConvert.data(using: .utf8) {
+        NetworkManager.shared.setNewContact(withParameters: parameters, headers: SettingManager.HEADERS, completion: { (response, error) in
             
-            let base64String = "BASIC " + data.base64EncodedString()
+            guard error == nil else {
+                ErrorManager.shered.handleAnError(error: error!, viewController: self)
+                self.hideLoadingView()
+                return
+            }
             
-            let headers = ["Authorization" : base64String, "API-KEY" : "\(credintial!.apiKey!)", "Accept" : "application/json", "Content-Type" : "application/json"]
+            self.contact = Contact(dictionary: parameters as NSDictionary)
             
-            NetworkManager.shared.setNewContact(withParameters: parameters, headers: headers, completion: { (response, error) in
-                
-                guard error == nil else {
-                    ErrorManager.shered.handleAnError(error: error!, viewController: self)
-                    return
-                }
-                
-                self.contact = Contact(dictionary: parameters as NSDictionary)
-                
-                let parentId = response!["id"] as! Int
-                self.setNewImage(by: parentId, andHeaders: headers)
-            })
-        }
+            let parentId = response!["id"] as! Int
+            self.setNewImage(by: parentId, andHeaders: SettingManager.HEADERS)
+        })
     }
     
     // MARK: - UINavigationController & UIImagePickerController Delegate
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
         
         if collectionData.count == 0 {
-            collectionViewConstraint.constant = 212
+            collectionViewConstraint.constant = self.COLLECTION_VIEW_HEIGHT
+            scrollView.contentSize = CGSize(width: scrollView.contentSize.width, height: scrollView.contentSize.height + self.COLLECTION_VIEW_HEIGHT)
+            
             collectionView.isHidden = false
             
             UIView.animate(withDuration: 0.3, animations: {
@@ -343,11 +385,11 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
                     DispatchQueue.main.async {
                         
                         if index == 0 {
-                            self.extraHouseTextField.text = name
+                            self.houseTextField.text = name
                         } else if index == 1 {
-                            self.extraStreetTextField.text = name
+                            self.streetTextField.text = name
                         } else if index == 2 {
-                            self.extraDistrictTextField.text = name
+                            self.districtTextField.text = name
                         }
                     }
                 }
@@ -378,7 +420,7 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         guard let userInfo = notification.userInfo, let keyboardSize = (userInfo[UIKeyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue.size else {
             return
         }
-       
+        
         scrollView.contentInset = UIEdgeInsets(top: 64.0, left: 0.0, bottom: keyboardSize.height, right: 0.0)
     }
     
@@ -404,7 +446,7 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         activeField = textField
         pickerView.selectRow(0, inComponent: 0, animated: false)
         
-        if textField == districtTextField || textField == extraDistrictTextField {
+        if textField == districtTextField {
             
             let districts = SettingManager.shered.getDistricts()
             setAndReloadPickerData(data: districts)
@@ -420,29 +462,12 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
             } else { streets = SettingManager.shered.getStreets() }
             
             setAndReloadPickerData(data: streets!)
-        
-        } else if textField == extraStreetTextField {
-          
-            var extraStreets: [Street]?
-            if let text = extraDistrictTextField.text, text != "" {
-                
-                let extraDistrict = SettingManager.shered.getDistrict(by: text)
-                extraStreets = SettingManager.shered.getStreets(by: (extraDistrict?.id!)!)
-                
-            } else { extraStreets = SettingManager.shered.getStreets() }
-            
-            setAndReloadPickerData(data: extraStreets!)
             
         } else if textField == derectionAppealTextField {
             
             let problems = SettingManager.shered.getProblems()
             setAndReloadPickerData(data: problems)
-        
-        } else if textField == appealTypeTextField {
             
-            let contactTypes = SettingManager.shered.getContactTypes()
-            setAndReloadPickerData(data: contactTypes)
-        
         } else if textField == eventTypeTextField {
             
             if !textField.isEnabled {
@@ -547,18 +572,11 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
             streetTextField.text = ""
         } else if activeField == streetTextField {
             streetTextField.text = pickerData[pickerSelectedIndex]
-        } else if activeField == extraDistrictTextField {
-            extraDistrictTextField.text = pickerData[pickerSelectedIndex]
-            extraStreetTextField.text = ""
-        } else if activeField == extraStreetTextField {
-            extraStreetTextField.text = pickerData[pickerSelectedIndex]
         } else if activeField == derectionAppealTextField {
             derectionAppealTextField.text = pickerData[pickerSelectedIndex]
             eventTypeTextField.text = ""
         } else if activeField == eventTypeTextField {
             eventTypeTextField.text = pickerData[pickerSelectedIndex]
-        } else if activeField == appealTypeTextField {
-            appealTypeTextField.text = pickerData[pickerSelectedIndex]
         }
         
         hideKeybourd()
@@ -568,11 +586,8 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         
         districtTextField.resignFirstResponder()
         streetTextField.resignFirstResponder()
-        extraDistrictTextField.resignFirstResponder()
-        extraStreetTextField.resignFirstResponder()
         derectionAppealTextField.resignFirstResponder()
         eventTypeTextField.resignFirstResponder()
-        appealTypeTextField.resignFirstResponder()
         
         pickerSelectedIndex = 0
     }
@@ -603,21 +618,20 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         }
     }
     
-    func setEnabledTextFields(isEnable: Bool) {
+    func showLoadingView() {
         
-        if isEnable {
-            
-            districtTextField.isEnabled = true
-            streetTextField.isEnabled = true
-            houseTextField.isEnabled = true
-            flatTextField.isEnabled = true
+        let alertView = Bundle.main.loadNibNamed("LoadingView", owner: self, options: nil)?.first as! UIView
+        alertView.tag = 1003
+        alertView.frame = UIScreen.main.bounds
+        view.addSubview(alertView)
+    }
+    
+    func hideLoadingView() {
         
-        } else {
-            
-            districtTextField.isEnabled = false
-            streetTextField.isEnabled = false
-            houseTextField.isEnabled = false
-            flatTextField.isEnabled = false
+        for subView in view.subviews {
+            if subView.tag == 1003 {
+                subView.removeFromSuperview()
+            }
         }
     }
     
@@ -630,12 +644,7 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
             flatTextField,
             derectionAppealTextField,
             eventTypeTextField,
-            describeProblemTextField,
-            appealTypeTextField,
-            extraDistrictTextField,
-            extraStreetTextField,
-            extraHouseTextField,
-            extraFlatTextField
+            describeProblemTextField
         ]
         
         for textField in textFields {
@@ -669,13 +678,13 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
             for problem in data as! [Problem] {
                 pickerData.append(problem.name!)
             }
-        
+            
         } else if data is [ContactType] {
             
             for contactType in data as! [ContactType] {
                 pickerData.append(contactType.name!)
             }
-        
+            
         } else if data is [Cause] {
             
             for cause in data as! [Cause] {
@@ -719,13 +728,14 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
     func setNewImage(by parentId: Int, andHeaders headers: [String : String]) {
         
         DispatchQueue.main.async {
-    
+            
             if self.collectionData.count > 0 {
                 self.sendImage(parentId: parentId, andHeaders: headers)
             } else {
                 
                 SettingManager.shered.addContact(contact: self.contact)
                 self.showAlert(withTitle: "Повідомлення", message: "Звернення відправлено", handler: { (alert) in
+                    self.hideLoadingView()
                     self.goToMyAppealVC()
                 })
             }
@@ -738,7 +748,7 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
         if photoIndex < collectionData.count {
             
             let image = collectionData[photoIndex]
-                
+            
             let imageData = UIImagePNGRepresentation(image)
             let imageBase64 = imageData?.base64EncodedString()
             
@@ -759,7 +769,7 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
                 self.photoIndex += 1
                 self.sendImage(parentId: parentId, andHeaders: andHeaders)
             })
-        
+            
         } else {
             
             photoIndex = 0
@@ -768,9 +778,35 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
             SettingManager.shered.addContact(contact: self.contact)
             
             self.showAlert(withTitle: "Повідомлення", message: "Звернення відправлено", handler: { (alert) in
+                self.hideLoadingView()
                 self.goToMyAppealVC()
             })
         }
+    }
+    
+    func getMyProfile(completionWithFail: @escaping (_ result: Bool) -> ()) {
+        
+        NetworkManager.shared.getMyProfile(withHeaders: SettingManager.HEADERS, completion: { (response, error) in
+            
+            guard error == nil, response != nil else {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+                return
+            }
+            
+            guard let email = response!["email"] as? String, email != "" else {
+                completionWithFail(true)
+                return
+            }
+            
+            guard let phone = response!["tel"] as? String, phone != "" else {
+                completionWithFail(true)
+                return
+            }
+            
+            completionWithFail(false)
+            
+            self.myProfile = Profile(parameters: response!)
+        })
     }
     
     func goToMyAppealVC() {
@@ -786,23 +822,37 @@ class SendAppealVC: UIViewController, UIPickerViewDelegate, UIPickerViewDataSour
             self.present(navigationController, animated: true, completion: nil)
         }
     }
-
+    
+    @IBAction func goToMyProfileVC(_ sender: UIButton) {
+        
+        let myProfileVC = storyboard?.instantiateViewController(withIdentifier: "MyProfileVCID") as! MyProfileVC
+        myProfileVC.navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Назад", style: .plain, target: myProfileVC, action: #selector(myProfileVC.goToMainVC))
+        let navigationController = UINavigationController(rootViewController: myProfileVC)
+        
+        let titleDict: [NSAttributedStringKey: Any] = [NSAttributedStringKey(rawValue: NSAttributedStringKey.foregroundColor.rawValue): UIColor.white]
+        navigationController.navigationBar.titleTextAttributes = titleDict
+        
+        DispatchQueue.main.async {
+            self.present(navigationController, animated: true, completion: nil)
+        }
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
     
-
+    
     /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
-    }
-    */
-
+     // MARK: - Navigation
+     
+     // In a storyboard-based application, you will often want to do a little preparation before navigation
+     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+     // Get the new view controller using segue.destinationViewController.
+     // Pass the selected object to the new view controller.
+     }
+     */
+    
 }
 
 extension SendAppealVC: UICollectionViewDelegate, UICollectionViewDataSource {
@@ -823,3 +873,4 @@ extension SendAppealVC: UICollectionViewDelegate, UICollectionViewDataSource {
         return cell
     }
 }
+

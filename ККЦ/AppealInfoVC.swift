@@ -370,17 +370,20 @@ class AppealInfoVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate,
         
         let headers = getHeaders()
         
-        NetworkManager.shared.getCCResult(by: contact.id!, headers: headers, completion: { (response, error) in
+        if let contactId = contact.id {
             
-            guard error == nil, response != nil else {
-                ErrorManager.shered.handleAnError(error: error, viewController: self)
-                return
-            }
-            
-            DispatchQueue.main.async {
-                self.responseToAppealLabel.text = response!["text"] as? String
-            }
-        })
+            NetworkManager.shared.getCCResult(by: contactId, headers: headers, completion: { (response, error) in
+                
+                guard error == nil, response != nil else {
+                    ErrorManager.shered.handleAnError(error: error, viewController: self)
+                    return
+                }
+                
+                DispatchQueue.main.async {
+                    self.responseToAppealLabel.text = response!["text"] as? String
+                }
+            })
+        }
     }
     
     func getHeaders() -> [String : String] {

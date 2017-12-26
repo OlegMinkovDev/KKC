@@ -26,7 +26,7 @@ class PollsVC: UIViewController, UICollectionViewDelegate, UICollectionViewDataS
         super.viewWillAppear(animated)
         
         navigationController?.setNavigationBarHidden(false, animated: true)
-        title = "Опросы"
+        title = "Опитування"
     }
     
     // MARK: - CollectionView Delegate & DataSource & FlowLayoutDelegate
@@ -63,60 +63,52 @@ class PollsVC: UIViewController, UICollectionViewDelegate, UICollectionViewDataS
     // MARK: Helpful functions
     func getListSurveys(by cityId: Int) {
         
-        let stringToConvert = "\(credintial!.token!):"
-        if let data = stringToConvert.data(using: .utf8) {
+        let parameters: [String: Any] = [
+            "culture" : "ua",
+            "city_id" : cityId
+        ]
+        
+        NetworkManager.shared.getListSurveys(withParameters: parameters, headers: SettingManager.HEADERS, completion: { (response, error) in
             
-            let base64String = "BASIC " + data.base64EncodedString()
+            guard error == nil, response != nil else {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+                return
+            }
             
-            let headers = ["Authorization" : base64String, "API-KEY" : "\(credintial!.apiKey!)", "Accept" : "application/json", "Content-Type" : "application/json"]
+            let surveys = response!["surveys"] as! [NSDictionary]
             
-            let parameters: [String: Any] = [
-                "culture" : "ua",
-                "city_id" : cityId
-            ]
-            
-            NetworkManager.shared.getListSurveys(withParameters: parameters, headers: headers, completion: { (response, error) in
+            var surveyArray = [Survey]()
+            for dictionary in surveys {
                 
-                guard error == nil, response != nil else {
-                    ErrorManager.shered.handleAnError(error: error, viewController: self)
-                    return
-                }
+                let used = dictionary["used"] as? Bool
                 
-                let surveys = response!["surveys"] as! [NSDictionary]
+                let parameters: [String: Any] = [
+                    "culture" : "ua",
+                    "parentid" : dictionary["id"] as! Int,
+                    "city_id" : cityId
+                ]
                 
-                var surveyArray = [Survey]()
-                for dictionary in surveys {
+                NetworkManager.shared.getSurvey(withParameters: parameters, headers: SettingManager.HEADERS, completion: { (response, error) in
                     
-                    let used = dictionary["used"] as? Bool
+                    guard error == nil, response != nil else {
+                        ErrorManager.shered.handleAnError(error: error, viewController: self)
+                        return
+                    }
                     
-                    let parameters: [String: Any] = [
-                        "culture" : "ua",
-                        "parentid" : dictionary["id"] as! Int,
-                        "city_id" : cityId
-                    ]
+                    let survey = Survey(dictionary: response!)
+                    survey.used = used
+                    surveyArray.append(survey)
                     
-                    NetworkManager.shared.getSurvey(withParameters: parameters, headers: headers, completion: { (response, error) in
-                        
-                        guard error == nil, response != nil else {
-                            ErrorManager.shered.handleAnError(error: error, viewController: self)
-                            return
-                        }
-                        
-                        let survey = Survey(dictionary: response!)
-                        survey.used = used
-                        surveyArray.append(survey)
-                        
-                        self.dataArray = surveyArray
-                        
-                        DispatchQueue.main.async {
-                            self.collectionView.reloadData()
-                        }
-                        
-                        SettingManager.shered.saveSurveys(surveys: surveyArray)
-                    })
-                }
-            })
-        }
+                    self.dataArray = surveyArray
+                    
+                    DispatchQueue.main.async {
+                        self.collectionView.reloadData()
+                    }
+                    
+                    SettingManager.shered.saveSurveys(surveys: surveyArray)
+                })
+            }
+        })
     }
     
     override func didReceiveMemoryWarning() {
@@ -126,7 +118,7 @@ class PollsVC: UIViewController, UICollectionViewDelegate, UICollectionViewDataS
     
     
     // MARK: - Navigation
-
+    
     // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if let viewController = segue.destination as? PollsDetailVC {

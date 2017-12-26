@@ -29,6 +29,8 @@ class ForgetPasswordVC: UIViewController, UITextFieldDelegate {
             return
         }
         
+        showWaitingView()
+        
         let parameters: [String: Any] = [
             "Email" : "\(email)"
         ]
@@ -37,6 +39,8 @@ class ForgetPasswordVC: UIViewController, UITextFieldDelegate {
             
             guard error == nil else {
                 ErrorManager.shered.handleAnError(error: error!, viewController: self)
+                
+                self.hideWaitingView()
                 
                 if error == .elementNotFound {
                     self.showAlert(withTitle: "Помилка", message: "Введіть email який ви вводили при реєстрації")
@@ -47,19 +51,13 @@ class ForgetPasswordVC: UIViewController, UITextFieldDelegate {
                 return
             }
             
-            if response?["code"] as? Int == 300 {
+            self.hideWaitingView()
+            self.showAlert(withTitle: "Повідомлення", message: "Новий пароль відправлений вам на email", handler: { (alert) in
                 
-                var str = response?["message"] as! String
-                str = str.replacingOccurrences(of: ",", with: "")
-                let strArr = str.components(separatedBy: " ")
-                
-                for item in strArr {
-                    
-                    if Int(item) != nil {
-                        self.showAlert(withTitle: "", message: "Ваш пароль \(item), але поштова сисема ще не налаштована")
-                    }
+                DispatchQueue.main.async {
+                    self.dismiss(animated: true, completion: nil)
                 }
-            }
+            })
         }
     }
     
@@ -112,6 +110,46 @@ class ForgetPasswordVC: UIViewController, UITextFieldDelegate {
         
         DispatchQueue.main.async {
             self.present(alertController, animated: true, completion: nil)
+        }
+    }
+    
+    func showAlert(withTitle: String, message: String, handler: ((UIAlertAction) -> Void)?) {
+        
+        let alertController = UIAlertController(title: withTitle, message: message, preferredStyle: .alert)
+        let okAction = UIAlertAction(title: "OK", style: .default) { (alert) in
+            handler!(alert)
+        }
+        
+        alertController.addAction(okAction)
+        
+        DispatchQueue.main.async {
+            self.present(alertController, animated: true, completion: nil)
+        }
+    }
+    
+    func showWaitingView() {
+        
+        let shadowView = UIView(frame: view.frame)
+        shadowView.backgroundColor = .black
+        shadowView.alpha = 0.6
+        shadowView.tag = 1000
+        
+        let activityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: .white)
+        activityIndicatorView.center = view.center
+        activityIndicatorView.startAnimating()
+        shadowView.addSubview(activityIndicatorView)
+        
+        view.addSubview(shadowView)
+    }
+    
+    func hideWaitingView() {
+        
+        DispatchQueue.main.async {
+            for currentView in self.view.subviews {
+                if currentView.tag == 1000 {
+                    currentView.removeFromSuperview()
+                }
+            }
         }
     }
     

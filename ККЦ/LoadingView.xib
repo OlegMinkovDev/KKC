@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="13771" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+    <device id="retina4_7" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13772"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <view contentMode="scaleToFill" id="iN0-l3-epB">
+            <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <subviews>
+                <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="1Za-80-l1A">
+                    <rect key="frame" x="77" y="288" width="221" height="91"/>
+                    <subviews>
+                        <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" animating="YES" style="gray" translatesAutoresizingMaskIntoConstraints="NO" id="zIb-9M-GAg">
+                            <rect key="frame" x="100" y="8" width="20" height="20"/>
+                        </activityIndicatorView>
+                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Ваше звернення формується" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ZWr-J7-EpQ">
+                            <rect key="frame" x="0.0" y="36" width="221" height="55"/>
+                            <constraints>
+                                <constraint firstAttribute="height" constant="55" id="VUD-yT-nM9"/>
+                            </constraints>
+                            <fontDescription key="fontDescription" type="system" pointSize="18"/>
+                            <nil key="textColor"/>
+                            <nil key="highlightedColor"/>
+                        </label>
+                    </subviews>
+                    <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="221" id="9g3-5G-Arg"/>
+                        <constraint firstItem="zIb-9M-GAg" firstAttribute="top" secondItem="1Za-80-l1A" secondAttribute="top" constant="8" id="CUE-OF-Urc"/>
+                        <constraint firstAttribute="trailing" secondItem="ZWr-J7-EpQ" secondAttribute="trailing" id="HEx-xa-SQ3"/>
+                        <constraint firstAttribute="bottom" secondItem="ZWr-J7-EpQ" secondAttribute="bottom" id="Jde-3k-KB1"/>
+                        <constraint firstItem="zIb-9M-GAg" firstAttribute="centerX" secondItem="1Za-80-l1A" secondAttribute="centerX" id="WRD-hv-Lzf"/>
+                        <constraint firstItem="ZWr-J7-EpQ" firstAttribute="leading" secondItem="1Za-80-l1A" secondAttribute="leading" id="cZO-B6-bQg"/>
+                        <constraint firstAttribute="height" constant="91" id="chT-Hf-g8B"/>
+                    </constraints>
+                    <userDefinedRuntimeAttributes>
+                        <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                            <integer key="value" value="10"/>
+                        </userDefinedRuntimeAttribute>
+                    </userDefinedRuntimeAttributes>
+                </view>
+            </subviews>
+            <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.5" colorSpace="custom" customColorSpace="sRGB"/>
+            <constraints>
+                <constraint firstItem="1Za-80-l1A" firstAttribute="centerY" secondItem="iN0-l3-epB" secondAttribute="centerY" id="ffe-gN-CYr"/>
+                <constraint firstItem="1Za-80-l1A" firstAttribute="centerX" secondItem="iN0-l3-epB" secondAttribute="centerX" id="uye-Cv-aRR"/>
+            </constraints>
+            <viewLayoutGuide key="safeArea" id="vUN-kp-3ea"/>
+        </view>
+    </objects>
+</document>

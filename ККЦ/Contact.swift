@@ -18,6 +18,7 @@ class Contact {
     var isPublic: Bool?
     var reciveDate: String?
     var perfomed: String?
+    var approved: Int?
     var imageBase64: [String]?
     var images: [UIImage]?
     
@@ -38,6 +39,7 @@ class Contact {
         self.isPublic = false
         self.reciveDate = ""
         self.perfomed = ""
+        self.approved = 0
         self.imageBase64 = []
         self.images = []
     }
@@ -59,5 +61,6 @@ class Contact {
         self.isPublic = dictionary["is_public"] as? Bool
         self.reciveDate = dictionary["recive_date"] as? String
         self.perfomed = dictionary["perfomed"] as? String
+        self.approved = dictionary["approved"] as? Int
     }
 }

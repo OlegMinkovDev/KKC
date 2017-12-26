@@ -7,6 +7,7 @@ class SettingManager: NSObject {
     private override init() {}
     
     private var credential: Credentials?
+    private var cities = [City]()
     private var districts = [District]()
     private var streets = [Street]()
     private var clientCategories = [ClientCategory]()
@@ -17,8 +18,12 @@ class SettingManager: NSObject {
     private var causes = [Cause]()
     private var contacts = [Contact]()
     private var surveys = [Survey]()
+    private var alerts = [Alert]()
+    private var messages = [Int : [Message]]()
     
     static let MAX_TEXTFIELD_LENGTH = 75
+    static var HEADERS: [String : String]!
+    static var MY_PROFILE: Profile!
     
     func saveCredential(credential: Credentials) {
         
@@ -29,6 +34,8 @@ class SettingManager: NSObject {
         UserDefaults.standard.set(credential.verify!, forKey: "verify")
         
         self.credential = credential
+        
+        updateHeaders()
     }
     
     func getCredential() -> Credentials? {
@@ -43,6 +50,52 @@ class SettingManager: NSObject {
             credential.verify = UserDefaults.standard.value(forKey: "verify") as? String
             
             return credential
+        }
+        
+        return nil
+    }
+    
+    func updateHeaders() {
+        
+        let credential = getCredential()
+        let stringToConvert = "\(credential!.token!):"
+        
+        if let data = stringToConvert.data(using: .utf8) {
+            
+            let base64String = "BASIC " + data.base64EncodedString()
+            
+            let headers = ["Authorization" : base64String, "API-KEY" : "\(credential!.apiKey!)", "Accept" : "application/json", "Content-Type" : "application/json"]
+            print(base64String)
+            print(credential!.apiKey!)
+            SettingManager.HEADERS = headers
+        }
+    }
+    
+    func saveCities(cities: [City]) {
+        self.cities = cities
+    }
+    
+    func getCities() -> [City] {
+        return self.cities
+    }
+    
+    func getCity(byName name: String) -> City? {
+        
+        for city in self.cities {
+            if city.name! == name {
+                return city
+            }
+        }
+        
+        return nil
+    }
+    
+    func getCity(byId id: Int) -> City? {
+        
+        for city in self.cities {
+            if city.id! == id {
+                return city
+            }
         }
         
         return nil
@@ -263,6 +316,34 @@ class SettingManager: NSObject {
     
     func getSurveys() -> [Survey] {
         return self.surveys
+    }
+    
+    func saveAlerts(alerts: [Alert]) {
+        self.alerts = alerts
+    }
+    
+    func getAlerts() -> [Alert] {
+        return self.alerts
+    }
+    
+    func addMessage(roomId: Int, message: Message) {
+        
+        var messageArray = self.messages[roomId]
+        if messageArray == nil {
+            messageArray = []
+        }
+        
+        messageArray?.append(message)
+        self.messages[roomId] = messageArray
+    }
+    
+    func getMessages(roomId: Int) -> [Message] {
+        
+        if let messages = self.messages[roomId] {
+            return messages
+        }
+        
+        return []
     }
 }
 

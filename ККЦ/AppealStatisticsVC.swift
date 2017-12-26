@@ -8,18 +8,17 @@
 
 import UIKit
 
-class AppealStatisticsVC: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class AppealStatisticsVC: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
 
-    @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var collectionView: UICollectionView!
     
-    let reusableIdentifier = "cell"
-    let dataArray = ["Топ-5 проблем по количеству обращений", "Динамика поступления обращения по дням", "ТОП-10 населенных пунктов по количеству обращений"]
+    let dataArray = ["Топ-5 проблем за кількістю звернень", "Топ-10 населенных пунктов по количеству обращений"]
+    var tapIndex = Int()
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        title = "Статистика обращений"
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: reusableIdentifier)
+        title = "Статистика звернень"
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -28,32 +27,30 @@ class AppealStatisticsVC: UIViewController, UITableViewDelegate, UITableViewData
         navigationController?.setNavigationBarHidden(false, animated: true)
     }
     
-    // MARK: - TableView Delegate & DataSource
-    func numberOfSections(in tableView: UITableView) -> Int {
+    // MARK: - CollectionView Delegate & DataSource & FlowLayoutDelegate
+    func numberOfSections(in collectionView: UICollectionView) -> Int {
         return 1
     }
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return dataArray.count
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: reusableIdentifier)
-        cell?.textLabel?.text = dataArray[indexPath.row]
-        cell?.textLabel?.lineBreakMode = .byWordWrapping
-        cell?.textLabel?.numberOfLines = 2
-        cell?.accessoryType = .disclosureIndicator
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "pollsCell", for: indexPath) as! PollsCell
+        cell.pollsNameLabel.text = dataArray[indexPath.row]
         
-        return cell!
+        return cell
     }
     
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        tapIndex = indexPath.row
         performSegue(withIdentifier: "toDiagramVC", sender: self)
     }
     
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 60
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        return CGSize(width: view.frame.width, height: 64)
     }
 
     override func didReceiveMemoryWarning() {
@@ -62,14 +59,15 @@ class AppealStatisticsVC: UIViewController, UITableViewDelegate, UITableViewData
     }
     
 
-    /*
+    
     // MARK: - Navigation
 
     // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
+        if let viewController = segue.destination as? ChartsVC {
+            viewController.diagramType = tapIndex
+        }
     }
-    */
+    
 
 }

@@ -12,7 +12,6 @@ class ErrorManager {
             goToAuthorizationVC(viewController)
         } else if error == NetworkError.authenticationFailed {
             print(String(describing: viewController.self), ": authentication failed")
-            showAlert(viewController, withTitle: "Помилка", message: "Неправильний пароль")
         } else if error == NetworkError.elementNotFound {
             print(String(describing: viewController.self), ": element not found")
         } else if error == NetworkError.headerNotProvided {

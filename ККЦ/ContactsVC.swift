@@ -12,20 +12,19 @@ class ContactsVC: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
     @IBOutlet weak var tableView: UITableView!
     
-    let reusableIndetifier = "cell"
-    let dataArray = ["Мариуполь", "Гнутово", "сел. Старый Крым", "сел. Талаковка", "сел. Вминоградное"]
+    let dataArray = ["056-732-12-12", "095-732-12-12", "096-732-12-12", "073-732-12-12"]
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: reusableIndetifier)
+        tableView.isScrollEnabled = false
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         navigationController?.setNavigationBarHidden(false, animated: true)
-        title = "Контакты"
+        title = "Контакти"
     }
     
     // MARK: - TableView Delegate & DataSource
@@ -39,16 +38,18 @@ class ContactsVC: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: reusableIndetifier)
-        cell?.textLabel?.text = dataArray[indexPath.row]
-        cell?.accessoryType = .disclosureIndicator
+        let cell = tableView.dequeueReusableCell(withIdentifier: "contactCell") as! ContactCell
+        cell.selectionStyle = .none
+        cell.phoneLabel?.text = dataArray[indexPath.row]
         
-        return cell!
+        return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        performSegue(withIdentifier: "toContactDetailVC", sender: self)
+        if let url = URL(string: "tel://\(dataArray[indexPath.row + 1])"), UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.openURL(url)
+        }
     }
     
     override func didReceiveMemoryWarning() {

@@ -2,6 +2,7 @@ import Foundation
 
 class Profile {
     
+    var id: Int?
     var surname: String?
     var name: String?
     var city: Int?
@@ -22,9 +23,13 @@ class Profile {
     var doorCode: Int?
     var entrance: Int?
     var block: String?
+    var fullName: String? {
+        return "\(String(describing: self.name)) \(String(describing: self.surname))"
+    }
     
     init() {
         
+        self.id = 0
         self.surname = ""
         self.name = ""
         self.city = 0
@@ -49,6 +54,7 @@ class Profile {
     
     init(parameters: NSDictionary) {
         
+        self.id = parameters["id"] as? Int
         self.surname = parameters["surname"] as? String
         self.name = parameters["name"] as? String
         self.city = parameters["city"] as? Int

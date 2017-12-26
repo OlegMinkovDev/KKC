@@ -52,6 +52,62 @@ class Survey {
             }
         }
     }
+    
+    func converToDictionary() -> [String : Any] {
+        
+        // parse fields
+        var arrayField = [[String : Any]]()
+        if let fields = self.fields {
+            for field in fields {
+                
+                // parse variants
+                var arrayVariant = [[String : Any]]()
+                if let variants = field.variants {
+                    for variant in variants {
+                        
+                        let dictionaryVariant : [String : Any] = [
+                            "id" : variant.id!,
+                            "name" : variant.name!,
+                            "about" : variant.about!,
+                            "is_checked" : variant.isChecked!
+                        ]
+                        
+                        arrayVariant.append(dictionaryVariant)
+                    }
+                }
+                
+                let dictionaryField : [String : Any] = [
+                    "id" : field.id!,
+                    "type_id" : field.typeId!,
+                    "name" : field.name!,
+                    "about" : field.about!,
+                    "variants" : arrayVariant
+                ]
+                
+                arrayField.append(dictionaryField)
+            }
+        }
+        
+        var complete = false
+        if self.complete != nil {
+            complete = self.complete!
+        }
+        
+        // parse survey
+        let dictionarySurvey : [String : Any] = [
+            "id" : self.id!,
+            "create_date" : self.createDate!,
+            "from_date" : self.fromDate!,
+            "to_date" : self.toDate!,
+            "name" : self.name!,
+            "about" : self.about!,
+            "is_active" : self.isActive!,
+            "complete" : complete,
+            "fields" : arrayField
+        ]
+        
+        return dictionarySurvey
+    }
 }
 
 class Field {

@@ -16,6 +16,7 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
     @IBOutlet weak var surnameTextField: UITextField!
     @IBOutlet weak var nameTextField: UITextField!
     @IBOutlet weak var emailTextField: UITextField!
+    @IBOutlet weak var cityTextField: UITextField!
     @IBOutlet weak var passwordTextField: UITextField!
     @IBOutlet weak var passwordAgainTextField: UITextField!
     @IBOutlet weak var sexTextField: UITextField!
@@ -24,17 +25,22 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
     @IBOutlet weak var complianceSwitch: UISwitch!
     @IBOutlet weak var registrationButton: UIButton!
     
-    let pickerData = ["Чоловіча", "Жіноча"]
+    var pickerView = UIPickerView()
+    var pickerData = [String]()
     let screenSize = UIScreen.main.bounds.size
     var activeField: UITextField?
-    var sexIndex = Int()
+    var pickerSelectedIndex = Int()
+    var offsetY:CGFloat = 0
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let picker = createPickerView()
+        let picker = createPickerAndAccessoryView()
+        pickerView = picker.pickerView
         
-        sexTextField.inputView = picker.inputView
+        cityTextField.inputView = picker.pickerView
+        cityTextField.inputAccessoryView = picker.accessoryView
+        sexTextField.inputView = picker.pickerView
         sexTextField.inputAccessoryView = picker.accessoryView
         
         registrationButton.isEnabled = false
@@ -45,7 +51,6 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
         
         complianceSwitch.addTarget(self, action: #selector(complianceValueChange), for: .valueChanged)
         
-        getCities()
         setPlaceholderColorForAllTextFields()
         setupComplianceActiveLabel()
         registerForKeyboardNotifications()
@@ -58,23 +63,34 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
     // MARK: - UI Methods
     @IBAction func registration(_ sender: Any) {
         
+        var errorText = ""
+        
         var parameters = [String: Any]()
         
-        guard let surname = surnameTextField.text, surname != "" else {
-            showAlert(withTitle: "Помилка", message: "Поле прізвище має бути заповнено")
-            return
+        if surnameTextField.text == nil || surnameTextField.text == "" {
+            
+            errorText += "Поле прізвище має бути заповнено \n"
+            setRedBorder(for: surnameTextField)
         }
-        guard let name = nameTextField.text, name != "" else {
-            showAlert(withTitle: "Помилка", message: "Поле ім'я повинно бути заповнене")
-            return
+        if nameTextField.text == nil || nameTextField.text == "" {
+            
+            errorText += "Поле ім'я повинно бути заповнене \n"
+            setRedBorder(for: nameTextField)
         }
-        guard let email = emailTextField.text else {
-            showAlert(withTitle: "Помилка", message: "Поле email має бути заповнено")
-            return
+        if emailTextField.text == nil || emailTextField.text == "" {
+            
+            errorText += "Поле email має бути заповнено \n"
+            setRedBorder(for: emailTextField)
         }
-        guard let password = passwordTextField.text, password.characters.count >= 6 else {
-            showAlert(withTitle: "Помилка", message: "Пароль повинен бути не менше 6 символів")
-            return
+        if cityTextField.text == nil || cityTextField.text == "" {
+            
+            errorText += "Поле місто має бути заповнено \n"
+            setRedBorder(for: cityTextField)
+        }
+        if passwordTextField.text == nil || (passwordTextField.text?.characters.count)! < 6 {
+            
+            errorText += "Пароль повинен бути не менше 6 символів \n"
+            setRedBorder(for: passwordTextField)
         }
         if let gender = sexTextField.text {
             
@@ -86,27 +102,35 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
                 parameters["gender"] = 0
             }
         }
-        
-        parameters["surname"] = surname
-        parameters["name"] = name
-        parameters["Email"] = email
-        parameters["Password"] = password
-        parameters["cityid"] = SettingManager.shered.getCityId()
-        
-        guard let passwordAgain = passwordAgainTextField.text, parameters["Password"] as! String == passwordAgain else {
+        if passwordTextField.text != passwordAgainTextField.text {
             
-            showAlert(withTitle: "Помилка", message: "Паролі не співпадають")
+            errorText += "Паролі не співпадають \n"
+            setRedBorder(for: passwordAgainTextField)
+        }
+        
+        guard errorText == "" else {
+            showAlert(withTitle: "Помилка", message: errorText)
             return
         }
+        
+        let cityId = SettingManager.shered.getCity(byName: cityTextField.text!)?.id!
+        parameters["cityid"] = cityId
+        SettingManager.shered.saveCityId(cityId: cityId!)
+        
+        parameters["surname"] = surnameTextField.text!
+        parameters["name"] = nameTextField.text!
+        parameters["Email"] = emailTextField.text!
+        parameters["Password"] = passwordTextField.text!
         
         NetworkManager.shared.signUp(withParameters: parameters) { (response, error) in
             
             guard error == nil else {
                 ErrorManager.shered.handleAnError(error: error!, viewController: self)
+                self.showAlert(withTitle: "Помилка", message: response!["message"] as! String)
                 return
             }
             
-            self.showAlert(withTitle: "Регистрация", message: "Ви успішно зареєстровані", handler: { _ in
+            self.showAlert(withTitle: "Підтвердження", message: "Вам на пошту відправлено повідомлення для підтвердження реєстрації. Посилання дійсно протягом 30 хвилин", handler: { _ in
                 
                 let credential = Credentials(parameters: response!)
                 SettingManager.shered.saveCredential(credential: credential)
@@ -127,10 +151,15 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
     
     @objc func complianceValueChange(_ sender: UISwitch) {
         
-        if complianceSwitch.isOn {
-            registrationButton.isEnabled = true
+        if self.complianceSwitch.isOn {
+            
+            self.registrationButton.isEnabled = true
+            self.registrationButton.alpha = 1
+        
         } else {
-            registrationButton.isEnabled = false
+            
+            self.registrationButton.isEnabled = false
+            self.registrationButton.alpha = 0.7
         }
     }
     
@@ -160,12 +189,12 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
             return
         }
         
-        scrollView.contentInset = UIEdgeInsets(top: 64.0, left: 0.0, bottom: keyboardSize.height, right: 0.0)
+        scrollView.contentInset = UIEdgeInsets(top: 0.0, left: 0.0, bottom: keyboardSize.height, right: 0.0)
     }
     
     @objc func keyboardWillHide(_ notification: Notification) {
         
-        scrollView.contentInset = UIEdgeInsets(top: 64.0, left: 0.0, bottom: 0, right: 0.0)
+        scrollView.contentInset = UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0, right: 0.0)
         scrollView.isScrollEnabled = true
     }
     
@@ -189,7 +218,7 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
         return pickerData[row]
     }
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-        sexIndex = row
+        pickerSelectedIndex = row
     }
     
     // MARK: - TextField Delegate
@@ -200,7 +229,20 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
     }
     
     func textFieldDidBeginEditing(_ textField: UITextField) {
+        
         activeField = textField
+        pickerView.selectRow(0, inComponent: 0, animated: false)
+        
+        removeRedBorder(for: textField)
+        
+        if textField == cityTextField {
+            
+            let cities = SettingManager.shered.getCities()
+            setAndReloadPickerData(data: cities)
+            
+        } else {
+            setAndReloadPickerData(data: ["Чоловіча", "Жіноча"])
+        }
     }
     
     func textFieldDidEndEditing(_ textField: UITextField) {
@@ -253,7 +295,7 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
     }
 
     // MARK: - Heplful functions
-    func createPickerView() -> (inputView: UIView, accessoryView: UIView) {
+    func createPickerAndAccessoryView() -> (pickerView: UIPickerView, accessoryView: UIView) {
         
         let accessoryView = UIView(frame: CGRect(x: 0, y: 0, width: screenSize.width, height: 44))
         accessoryView.backgroundColor = .groupTableViewBackground
@@ -308,13 +350,29 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
     }
     
     @objc func cancelButtonAction() {
-        sexTextField.resignFirstResponder()
+        
+        hideKeybourd()
+        pickerSelectedIndex = 0
     }
     
     @objc func selectButtonAction() {
         
-        sexTextField.text = pickerData[sexIndex]
+        if activeField == cityTextField {
+            cityTextField.text = pickerData[pickerSelectedIndex]
+        } else {
+            sexTextField.text = pickerData[pickerSelectedIndex]
+            sexTextField.resignFirstResponder()
+        }
+        
+        hideKeybourd()
+    }
+    
+    func hideKeybourd() {
+        
+        cityTextField.resignFirstResponder()
         sexTextField.resignFirstResponder()
+        
+        pickerSelectedIndex = 0
     }
     
     func showAlert(withTitle: String, message: String) {
@@ -378,7 +436,8 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
             emailTextField,
             passwordTextField,
             passwordAgainTextField,
-            sexTextField
+            sexTextField,
+            cityTextField
         ]
         
         for textField in textFields {
@@ -391,33 +450,37 @@ class RegistrationVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegat
         }
     }
     
-    func getCities() {
+    func setAndReloadPickerData(data: [Any]) {
         
-        let parameters: [String: Any] = [
-            "culture" : "ua",
-            "cityid" : 0
-        ]
+        pickerData = []
         
-        NetworkManager.shared.getCities(withParameters: parameters) { (response, error) in
+        if data is [City] {
             
-            guard error == nil, response != nil else {
-                ErrorManager.shered.handleAnError(error: error, viewController: self)
-                return
+            for city in data as! [City] {
+                pickerData.append(city.name!)
             }
             
-            let listCities = response!["list"] as! [NSDictionary]
+        } else if data is [String] {
             
-            listCities.forEach({ (dictionary) in
-                
-                let city = City(dictionary: dictionary)
-                
-                if city.name == "Мариуполь" {
-                    
-                    let mariupolId = city.id!
-                    SettingManager.shered.saveCityId(cityId: mariupolId)
-                }
-            })
+            for gender in data as! [String] {
+                pickerData.append(gender)
+            }
         }
+        
+        DispatchQueue.main.async {
+            self.pickerView.reloadAllComponents()
+        }
+    }
+    
+    func setRedBorder(for textField: UITextField) {
+        
+        textField.layer.borderWidth = 1
+        textField.layer.borderColor = UIColor.red.cgColor
+    }
+    
+    func removeRedBorder(for textField: UITextField) {
+        
+        textField.layer.borderWidth = 0
     }
 
     override func didReceiveMemoryWarning() {

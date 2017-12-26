@@ -22,47 +22,53 @@ class PollsDetailVC: UIViewController, UITableViewDelegate, UITableViewDataSourc
     @IBOutlet weak var tableViewHeightConstraint: NSLayoutConstraint!
     
     var survey = Survey()
-    var variantsArray = [String]()
+    var variantsArray = [Variant]()
     var questionIndex = Int()
     var radioButtons = [UIButton]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        getQuestion(by: self.questionIndex)
-    }
-
-    /*@IBAction func radioButton1Tap(_ sender: UIButton) {
-        setSelectedRadioButton(sender)
-    }
-    
-    @IBAction func radioButton2Tap(_ sender: UIButton) {
-        setSelectedRadioButton(sender)
-    }
-    
-    @IBAction func radioButton3Tap(_ sender: UIButton) {
-        setSelectedRadioButton(sender)
-    }
-    
-    @IBAction func radioButton4Tap(_ sender: UIButton) {
-        setSelectedRadioButton(sender)
-    }*/
-    
-    func setSelectedRadioButton(_ button: UIButton) {
         
-        if !button.isSelected {
-            button.isSelected = !button.isSelected
-            
-            for rb in radioButtons {
-                if rb != button {
-                    rb.isSelected = false
-                }
-            }
-        }
+        getQuestion(by: self.questionIndex)
     }
     
     // MARK: - UI Methods
     @IBAction func send(_ sender: UIButton) {
+        
+        let credintial = SettingManager.shered.getCredential()
+        
+        let stringToConvert = "\(credintial!.token!):"
+        if let data = stringToConvert.data(using: .utf8) {
+            
+            let base64String = "BASIC " + data.base64EncodedString()
+            
+            let headers = ["Authorization" : base64String, "API-KEY" : "\(credintial!.apiKey!)", "Accept" : "application/json", "Content-Type" : "application/json"]
+            
+            let parameters = survey.converToDictionary()
+            
+            NetworkManager.shared.addAnswersOnSurvey(withParameters: parameters, headers: headers, completion: { (response, error) in
+                
+                guard error == nil else {
+                    ErrorManager.shered.handleAnError(error: error!, viewController: self)
+                    return
+                }
+                
+                let alertController = UIAlertController(title: "Повідомлення", message: "Опитування успішно пройдено", preferredStyle: .alert)
+                let alertAction = UIAlertAction(title: "OK", style: .default, handler: { alert in
+                    
+                    let mainVC = self.storyboard?.instantiateViewController(withIdentifier: "MainVCID") as! UINavigationController
+                    
+                    DispatchQueue.main.async {
+                        self.present(mainVC, animated: true, completion: nil)
+                    }
+                })
+                alertController.addAction(alertAction)
+                
+                DispatchQueue.main.async {
+                    self.present(alertController, animated: false, completion: nil)
+                }
+            })
+        }
     }
     
     @IBAction func nextQuestion(_ sender: UIBarButtonItem) {
@@ -83,8 +89,15 @@ class PollsDetailVC: UIViewController, UITableViewDelegate, UITableViewDataSourc
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "answerCell") as! AnswerCell
-        cell.answerLabel.text = variantsArray[indexPath.row]
+        cell.answerLabel.text = variantsArray[indexPath.row].name
         cell.selectionStyle = .none
+        cell.radioButton.tag = indexPath.row
+        cell.radioButton.addTarget(self, action: #selector(radioButtonTap), for: .touchUpInside)
+        
+        cell.radioButton.isSelected = false
+        if indexPath.row == 0 {
+            cell.radioButton.isSelected = true
+        }
         
         radioButtons.append(cell.radioButton)
         
@@ -95,6 +108,15 @@ class PollsDetailVC: UIViewController, UITableViewDelegate, UITableViewDataSourc
         
         let cell = tableView.cellForRow(at: indexPath) as! AnswerCell
         setSelectedRadioButton(cell.radioButton)
+        setRightVariant(variantId: variantsArray[indexPath.row].id!)
+    }
+    
+    @objc func radioButtonTap(sender: UIButton) {
+        
+        let indexPath = IndexPath(row: sender.tag, section: 0)
+        let cell = tableView.cellForRow(at: indexPath) as! AnswerCell
+        setSelectedRadioButton(cell.radioButton)
+        setRightVariant(variantId: variantsArray[indexPath.row].id!)
     }
     
     // MARK: - Helpful functions
@@ -118,7 +140,7 @@ class PollsDetailVC: UIViewController, UITableViewDelegate, UITableViewDataSourc
                     
                     variantsArray = []
                     for variant in variants {
-                        variantsArray.append(variant.name!)
+                        variantsArray.append(variant)
                     }
                     
                     DispatchQueue.main.async {
@@ -133,6 +155,28 @@ class PollsDetailVC: UIViewController, UITableViewDelegate, UITableViewDataSourc
                 }
             
             }
+        }
+    }
+    
+    func setSelectedRadioButton(_ button: UIButton) {
+        
+        if !button.isSelected {
+            button.isSelected = !button.isSelected
+            
+            for rb in radioButtons {
+                if rb != button {
+                    rb.isSelected = false
+                }
+            }
+        }
+    }
+    
+    func setRightVariant(variantId: Int) {
+        
+        for variant in variantsArray {
+            if variant.id == variantId {
+                variant.isChecked = true
+            } else { variant.isChecked = false }
         }
     }
     

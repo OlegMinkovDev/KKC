@@ -15,6 +15,7 @@ class MyAppealCell: UICollectionViewCell {
     @IBOutlet weak var dateLabel: UILabel!
     @IBOutlet weak var nameAppealLabel: UILabel!
     @IBOutlet weak var textAppealLabel: UILabel!
+    @IBOutlet weak var examinedAppealLabel: UILabel!
     
     override func awakeFromNib() {
         super.awakeFromNib()

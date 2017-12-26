@@ -8,47 +8,37 @@
 
 import UIKit
 
-class HelpfulInformationVC: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class HelpfulInformationVC: UIViewController {
 
-    @IBOutlet weak var tableView: UITableView!
-    
-    let reusableIndetifier = "cell"
-    let dataArray = ["Ремонтные работы", "Тарифы по КП и др.", "Расписание транспорта"]
+    @IBOutlet weak var textLabel: CustomLabel!
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: reusableIndetifier)
+        title = "Корисна інформація"
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         navigationController?.setNavigationBarHidden(false, animated: true)
-        title = "Полезная информация"
+        getHelpfulInfo()
     }
     
-    // MARK: - TableView Delegate & DataSource
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
-    }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return dataArray.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    // MARK: Helpful functions
+    func getHelpfulInfo() {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: reusableIndetifier)
-        cell?.textLabel?.text = dataArray[indexPath.row]
-        cell?.accessoryType = .disclosureIndicator
-        
-        return cell!
-    }
-    
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
-        performSegue(withIdentifier: "toHelpfulInformationDetailVC", sender: self)
+        NetworkManager.shared.getMiscInfo { (response, error) in
+            
+            guard error == nil, let response = response else {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+                return
+            }
+            
+            DispatchQueue.main.async {
+                self.textLabel.text = response["text"] as? String
+            }
+        }
     }
     
     override func didReceiveMemoryWarning() {

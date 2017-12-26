@@ -13,10 +13,10 @@ class MainVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
     @IBOutlet weak var collectionView: UICollectionView!
     
     let icons = ["chatBubble", "archive", "diagram", "user", "info", "chatBubbles", "question", "book", "phone"]
-    let titles = ["Надіслати звернення", "Мої звернення", "Статистика звернень", "Мій Профіль", "Про програму", "Онлайн чат", "Опитування", "Корисна інформація", "Контакти"]
+    let titles = ["Надіслати звернення", "Мої звернення", "Статистика звернень", "Мій Профіль", "Сповіщення", "Онлайн чат", "Опитування", "Корисна інформація", "Контакти"]
     
     let credintial = SettingManager.shered.getCredential()
-    let mariupolId = SettingManager.shered.getCityId()
+    var dnieperId = SettingManager.shered.getCityId()
     let screenSize = UIScreen.main.bounds.size
     
     override func viewWillAppear(_ animated: Bool) {
@@ -33,15 +33,21 @@ class MainVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
         
         title = "Назад"
         
+        SettingManager.shered.updateHeaders()
+        
+        getCities()
+        
         DispatchQueue.global().async {
             
-            self.getDistricts(by: self.mariupolId)
-            self.getStreet(by: self.mariupolId)
-            self.getClientCategory(by: self.mariupolId)
+            self.getMyProfile()
+            self.getDistricts(by: self.dnieperId)
+            self.getStreet(by: self.dnieperId)
+            self.getClientCategory(by: self.dnieperId)
             self.getContactTypes()
             self.getProblemList()
             self.getKPList()
             self.getContacts()
+            self.getListAlarmAlerts()
         }
     }
     
@@ -109,6 +115,35 @@ class MainVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
     }
     
     // MARK: - Helpful functions
+    func getCities() {
+        
+        let parameters: [String: Any] = [
+            "culture" : "ua",
+            "cityid" : 0
+        ]
+        
+        NetworkManager.shared.getCities(withParameters: parameters) { (response, error) in
+            
+            guard error == nil, response != nil else {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+                return
+            }
+            
+            var cityArray = [City]()
+            
+            let listCities = response!["list"] as! [NSDictionary]
+            for dictionary in listCities {
+                
+                let city = City(dictionary: dictionary)
+                cityArray.append(city)
+            }
+            
+            self.dnieperId = cityArray[0].id!
+            
+            SettingManager.shered.saveCities(cities: cityArray)
+        }
+    }
+    
     func getDistricts(by cityId: Int) {
         
         let parameters: [String: Any] = [
@@ -145,12 +180,12 @@ class MainVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
         
         NetworkManager.shared.getStreets(withParameters: parameters) { (response, error) in
             
-            guard error == nil, response != nil else {
+            guard error == nil, let response = response else {
                 ErrorManager.shered.handleAnError(error: error, viewController: self)
                 return
             }
             
-            let streets = response!["list"] as! [NSDictionary]
+            let streets = response["list"] as! [NSDictionary]
             
             var streetArray = [Street]()
             for dictionary in streets {
@@ -270,31 +305,64 @@ class MainVC: UIViewController, UICollectionViewDataSource, UICollectionViewDele
     
     func getContacts() {
         
-        let stringToConvert = "\(credintial!.token!):"
-        if let data = stringToConvert.data(using: .utf8) {
+        NetworkManager.shared.getContacts(headers: SettingManager.HEADERS, completion: { (response, error) in
             
-            let base64String = "BASIC " + data.base64EncodedString()
+            guard error == nil, response != nil else {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+                return
+            }
             
-            let headers = ["Authorization" : base64String, "API-KEY" : "\(credintial!.apiKey!)", "Accept" : "application/json", "Content-Type" : "application/json"]
+            let contacts = response!["list"] as! [NSDictionary]
             
-            NetworkManager.shared.getContacts(headers: headers, completion: { (response, error) in
+            var contactArray = [Contact]()
+            for dictionary in contacts {
                 
-                guard error == nil, response != nil else {
-                    ErrorManager.shered.handleAnError(error: error, viewController: self)
-                    return
-                }
+                let contact = Contact(dictionary: dictionary)
+                contactArray.append(contact)
+            }
+            
+            SettingManager.shered.saveContacts(contacts: contactArray)
+        })
+    }
+    
+    func getMyProfile() {
+        
+        NetworkManager.shared.getMyProfile(withHeaders: SettingManager.HEADERS, completion: { (response, error) in
+            
+            guard error == nil, response != nil else {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+                return
+            }
+            
+            let myProfile = Profile(parameters: response!)
+            SettingManager.MY_PROFILE = myProfile
+        })
+    }
+    
+    func getListAlarmAlerts() {
+        
+        let parameters: [String : Any] = [
+            "culture" : "ua",
+            "city_id" : dnieperId
+        ]
+        print(parameters)
+        NetworkManager.shared.getListAlarmAlerts(withParameters: parameters) { (response, error) in
+            
+            guard error == nil, response != nil else {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+                return
+            }
+            
+            let alerts = response!["list"] as! [NSDictionary]
+            
+            var alertArray = [Alert]()
+            for dictionary in alerts {
                 
-                let contacts = response!["list"] as! [NSDictionary]
-                
-                var contactArray = [Contact]()
-                for dictionary in contacts {
-                    
-                    let contact = Contact(dictionary: dictionary)
-                    contactArray.append(contact)
-                }
-                
-                SettingManager.shered.saveContacts(contacts: contactArray)
-            })
+                let alert = Alert(dictionary: dictionary)
+                alertArray.append(alert)
+            }
+            
+            SettingManager.shered.saveAlerts(alerts: alertArray)
         }
     }
 

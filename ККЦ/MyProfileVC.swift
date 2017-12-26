@@ -17,16 +17,20 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
     @IBOutlet weak var phoneTextField: UITextField!
     @IBOutlet weak var surnameTextField: UITextField!
     @IBOutlet weak var nameTextField: UITextField!
+    @IBOutlet weak var cityTextField: UITextField!
     @IBOutlet weak var districtTextField: UITextField!
     @IBOutlet weak var streetTextField: UITextField!
     @IBOutlet weak var houseTextField: UITextField!
     @IBOutlet weak var flatTextField: UITextField!
     @IBOutlet weak var socialStatusTextField: UITextField!
+    @IBOutlet weak var changeEmailTextField: UITextField!
     
     @IBOutlet weak var complianceActiveLabel: ActiveLabel!
     
     @IBOutlet weak var newPasswordTextField: UITextField!
     @IBOutlet weak var newPasswordAgainTextField: UITextField!
+    @IBOutlet weak var changeEmailButton: UIButton!
+    @IBOutlet weak var changePasswordButton: UIButton!
     
     var pickerView = UIPickerView()
     var pickerSelectedIndex = Int()
@@ -42,12 +46,14 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
         let picker = createPickerAndAccessoryView()
         pickerView = picker.pickerView
         
-        socialStatusTextField.inputView = picker.pickerView
-        socialStatusTextField.inputAccessoryView = picker.accessoryView
+        cityTextField.inputView = picker.pickerView
+        cityTextField.inputAccessoryView = picker.accessoryView
         districtTextField.inputView = picker.pickerView
         districtTextField.inputAccessoryView = picker.accessoryView
         streetTextField.inputView = picker.pickerView
         streetTextField.inputAccessoryView = picker.accessoryView
+        socialStatusTextField.inputView = picker.pickerView
+        socialStatusTextField.inputAccessoryView = picker.accessoryView
         
         emailTextField.isEnabled = false
         
@@ -90,6 +96,11 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
         if let phone = phoneTextField.text, phone != "" {
             parameters["tel"] = phone
         }
+        if let city = cityTextField.text, city != "" {
+            
+            let cityId = SettingManager.shered.getCity(byName: city)?.id!
+            parameters["city"] = cityId
+        }
         if let street = streetTextField.text, street != "" {
             
             let streetId = SettingManager.shered.getStreet(by: street)?.id!
@@ -129,6 +140,40 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
         }
     }
     
+    @IBAction func changeEmail(_ sender: UIButton) {
+        
+        guard let newEmail = changeEmailTextField.text, newEmail != "" else {
+            showAlert(withTitle: "Помилка", message: "Введiть новий email")
+            return
+        }
+        
+        let parameters: [String : Any] = [
+            "email" : newEmail
+        ]
+        
+        NetworkManager.shared.changeEmail(withParameters: parameters, headers: SettingManager.HEADERS, completion: { (response, error) in
+            
+            guard error == nil else {
+                ErrorManager.shered.handleAnError(error: error!, viewController: self)
+                
+                if error == NetworkError.invalidParameters {
+                    self.showAlert(withTitle: "Помилка", message: "Невiрний email")
+                } else if error == NetworkError.elementNotFound {
+                    self.showAlert(withTitle: "Помилка", message: "Такий email вже iснує")
+                }
+                
+                return
+            }
+            
+            self.showAlert(withTitle: "Повідомлення", message: "На цей email відправлено повідомлення для підтвердженням адреси. Повідомлення дійсно 24 години", handler: { (_) in
+                
+                DispatchQueue.main.async {
+                    self.navigationController?.popViewController(animated: true)
+                }
+            })
+        })
+    }
+    
     @IBAction func changePassword(_ sender: Any) {
         
         guard let password = newPasswordTextField.text, password != "" else {
@@ -162,13 +207,27 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
                 let credential = Credentials(parameters: response!)
                 SettingManager.shered.saveCredential(credential: credential)
                 
-                self.showAlert(withTitle: "Повідомлення", message: "Пароль успішно змінений")
+                self.showAlert(withTitle: "Повідомлення", message: "Пароль успішно змінений", handler: { (_) in
+                    
+                    DispatchQueue.main.async {
+                        self.navigationController?.popViewController(animated: true)
+                    }
+                })
             })
         }
     }
     
     @objc func screenTapAction() {
         view.endEditing(true)
+    }
+    
+    @objc func goToMainVC() {
+        
+        let mainVC = self.storyboard?.instantiateViewController(withIdentifier: "MainVCID") as! UINavigationController
+        
+        DispatchQueue.main.async {
+            self.present(mainVC, animated: true, completion: nil)
+        }
     }
     
     // MARK: - NotificationCenter & Keybourd Events
@@ -189,30 +248,16 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
     @objc func keyboardWillShow(_ notification: Notification) {
         
         //Need to calculate keyboard exact size due to Apple suggestions
-        scrollView.isScrollEnabled = true
-        
-        var info = notification.userInfo
-        let keyboardSize = (info?[UIKeyboardFrameBeginUserInfoKey] as? NSValue)?.cgRectValue.size
-        let contentInsets : UIEdgeInsets = UIEdgeInsetsMake(64.0, 0.0, keyboardSize!.height, 0.0)
-        
-        scrollView.contentInset = contentInsets
-        scrollView.scrollIndicatorInsets = contentInsets
-        
-        var aRect : CGRect = self.view.frame
-        aRect.size.height -= keyboardSize!.height
-        if let activeFieldPresent = activeField {
-            if (!aRect.contains(activeFieldPresent.frame.origin)) {
-                self.scrollView.scrollRectToVisible(activeFieldPresent.frame, animated: true)
-            }
+        guard let userInfo = notification.userInfo, let keyboardSize = (userInfo[UIKeyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue.size else {
+            return
         }
+        
+        scrollView.contentInset = UIEdgeInsets(top: 64.0, left: 0.0, bottom: keyboardSize.height, right: 0.0)
     }
     
-    @objc func keyboardWillHide() {
+    @objc func keyboardWillHide(_ notification: Notification) {
         
-        //Once keyboard disappears, restore original positions
-        scrollView.contentOffset = CGPoint(x: 0.0, y: -64.0) //.zero
-        scrollView.contentInset = UIEdgeInsets(top: 64.0, left: 0.0, bottom: 0.0, right: 0.0) //.zero
-        scrollView.scrollIndicatorInsets = UIEdgeInsets(top: 64.0, left: 0.0, bottom: 0.0, right: 0.0) //.zero
+        scrollView.contentInset = UIEdgeInsets(top: 64.0, left: 0.0, bottom: 0, right: 0.0)
         scrollView.isScrollEnabled = true
     }
     
@@ -254,7 +299,12 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
         activeField = textField
         pickerView.selectRow(0, inComponent: 0, animated: false)
         
-        if textField == districtTextField {
+        if textField == cityTextField {
+            
+            let cities = SettingManager.shered.getCities()
+            setAndReloadPickerData(data: cities)
+            
+        } else if textField == districtTextField {
             
             let districts = SettingManager.shered.getDistricts()
             setAndReloadPickerData(data: districts)
@@ -276,6 +326,19 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
             let clientCategories = SettingManager.shered.getClientCategories()
             setAndReloadPickerData(data: clientCategories)
         }
+    }
+    
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        
+        activeField = nil
+        
+        if changeEmailTextField.text != "" {
+            changeEmailButton.isEnabled = true
+        } else { changeEmailButton.isEnabled = false }
+        
+        if newPasswordTextField.text != "" && newPasswordAgainTextField.text != "" {
+            changePasswordButton.isEnabled = true
+        } else { changePasswordButton.isEnabled = false }
     }
     
     // MARK: - GestureRecognize Delegate
@@ -384,7 +447,11 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
     
     @objc func selectButtonAction() {
         
-        if activeField == districtTextField {
+        if activeField == cityTextField {
+            cityTextField.text = pickerData[pickerSelectedIndex]
+            districtTextField.text = ""
+            streetTextField.text = ""
+        } else if activeField == districtTextField {
             districtTextField.text = pickerData[pickerSelectedIndex]
             streetTextField.text = ""
         } else if activeField == streetTextField {
@@ -398,23 +465,16 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
     
     func getMyProfile() {
         
-        let stringToConvert = "\(credintial!.token!):"
-        if let data = stringToConvert.data(using: .utf8) {
+        NetworkManager.shared.getMyProfile(withHeaders: SettingManager.HEADERS, completion: { (response, error) in
             
-            let base64String = "BASIC " + data.base64EncodedString()
+            guard error == nil, response != nil else {
+                ErrorManager.shered.handleAnError(error: error!, viewController: self)
+                return
+            }
             
-            let headers = ["Authorization" : base64String, "API-KEY" : "\(credintial!.apiKey!)"]
-            NetworkManager.shared.getMyProfile(withHeaders: headers, completion: { (response, error) in
-                
-                guard error == nil else {
-                    ErrorManager.shered.handleAnError(error: error!, viewController: self)
-                    return
-                }
-                
-                let myProfile = Profile(parameters: response!)
-                self.setData(profile: myProfile)
-            })
-        }
+            let myProfile = Profile(parameters: response!)
+            self.setData(profile: myProfile)
+        })
     }
     
     func setData(profile: Profile) {
@@ -427,6 +487,12 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
             self.nameTextField.text = profile.name
             self.houseTextField.text = profile.house
             self.flatTextField.text = profile.flat
+            
+            if let cityId = profile.city {
+                
+                let city = SettingManager.shered.getCity(byId: cityId)
+                self.cityTextField.text = city?.name
+            }
             
             if let streetId = profile.street {
                 
@@ -457,7 +523,8 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
             flatTextField,
             socialStatusTextField,
             newPasswordTextField,
-            newPasswordAgainTextField
+            newPasswordAgainTextField,
+            cityTextField
         ]
         
         for textField in textFields {
@@ -501,7 +568,13 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
         
         pickerData = []
         
-        if data is [District] {
+        if data is [City] {
+            
+            for city in data as! [City] {
+                pickerData.append(city.name!)
+            }
+            
+        } else if data is [District] {
             
             for district in data as! [District] {
                 pickerData.append(district.name!)
@@ -527,9 +600,10 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
     
     func hideKeybourd() {
         
-        socialStatusTextField.resignFirstResponder()
+        cityTextField.resignFirstResponder()
         districtTextField.resignFirstResponder()
         streetTextField.resignFirstResponder()
+        socialStatusTextField.resignFirstResponder()
         
         pickerSelectedIndex = 0
     }
@@ -538,6 +612,20 @@ class MyProfileVC: UIViewController, UITextFieldDelegate, UIPickerViewDelegate, 
         
         let alertController = UIAlertController(title: withTitle, message: message, preferredStyle: .alert)
         let okAction = UIAlertAction(title: "OK", style: .default, handler: nil)
+        
+        alertController.addAction(okAction)
+        
+        DispatchQueue.main.async {
+            self.present(alertController, animated: true, completion: nil)
+        }
+    }
+    
+    func showAlert(withTitle: String, message: String, handler: ((UIAlertAction) -> Void)?) {
+        
+        let alertController = UIAlertController(title: withTitle, message: message, preferredStyle: .alert)
+        let okAction = UIAlertAction(title: "OK", style: .default) { (alert) in
+            handler!(alert)
+        }
         
         alertController.addAction(okAction)
         

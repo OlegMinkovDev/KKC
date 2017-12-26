@@ -1,4 +1,4 @@
-//
+///
 //  AppDelegate.swift
 //  ККЦ
 //
@@ -17,13 +17,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         
-        let barTintColor = UIColor(red: 39/255, green: 100/255, blue: 180/255, alpha: 1)
+        let barTintColor = UIColor(red: 85/255, green: 90/255, blue: 161/255, alpha: 1)
         UINavigationBar.appearance().barTintColor = barTintColor
         UINavigationBar.appearance().tintColor = .white
         
         CustomLabel.appearance().textColor = .gray
         
         application.statusBarStyle = .lightContent
+        
+        window?.makeKeyAndVisible()
         
         return true
     }

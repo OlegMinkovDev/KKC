@@ -1,6 +1,6 @@
 import UIKit
 
-private let SERVER_BASE_URL = "http://sandora.naumenko.biz"
+private let SERVER_BASE_URL = "http://api.dnipro.bissoft.org" // "http://api.kkc-mariupol.bissoft.org"
 private var urlRequest:URLRequest?
 
 class NetworkManager: NSObject {
@@ -280,6 +280,30 @@ class NetworkManager: NSObject {
         task.resume()
     }
     
+    func changeEmail(withParameters: [String: Any], headers: [String: String], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/Authentication/json/changeemail"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = headers
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
     func getKPList(withParameters: [String: Any], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
         
         let api = "/Services/Dictionary/json/getkplist"
@@ -404,7 +428,7 @@ class NetworkManager: NSObject {
         
         let api = "/Services/ContactCenter/json/setnewcontact"
         urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
-        urlRequest?.httpMethod = "PUT"
+        urlRequest?.httpMethod = "POST"
         urlRequest?.allHTTPHeaderFields = headers
         
         var parametersData:Data?
@@ -428,7 +452,7 @@ class NetworkManager: NSObject {
         
         let api = "/Services/ContactCenter/json/setnewimage"
         urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
-        urlRequest?.httpMethod = "PUT"
+        urlRequest?.httpMethod = "POST"
         urlRequest?.allHTTPHeaderFields = headers
         
         var parametersData:Data?
@@ -595,6 +619,243 @@ class NetworkManager: NSObject {
         urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
         urlRequest?.httpMethod = "POST"
         urlRequest?.allHTTPHeaderFields = headers
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func addAnswersOnSurvey(withParameters: [String: Any], headers: [String: String], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+    
+        let api = "/Services/Survey/json/addanswersonsurvey"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = headers
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func getListAlarmAlerts(withParameters: [String: Any], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/Alert/json/getlistalarmalerts"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = ["Accept" : "application/json", "Content-Type" : "application/json"]
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func getMiscInfo(completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/Alert/json/getmiscinfo/ua"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = ["Accept" : "application/json", "Content-Type" : "application/json"]
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func listMyChatrooms(headers: [String: String], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/Chat/json/listmychatrooms"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "GET"
+        urlRequest?.allHTTPHeaderFields = headers
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func downloadMessages(withParameters: [String: Any], headers: [String: String], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/Chat/json/downloadmessages"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = headers
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func addMessage(withParameters: [String: Any], headers: [String: String], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/Chat/json/addmessage"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = headers
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func verifyFbCredentials(headers: [String: String], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/Authentication/json/verifyfbcredentials"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "GET"
+        urlRequest?.allHTTPHeaderFields = headers
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func fbSignUp(withParameters: [String: Any], headers: [String: String], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+    
+        let api = "/Services/Authentication/json/fbsignup"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = headers
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func getStatistics(withParameters: [String: Any], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/ContactCenter/json/getstatistics"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = ["Accept" : "application/json", "Content-Type" : "application/json"]
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func getStatisticsCPD(withParameters: [String: Any], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/ContactCenter/json/getstatisticscpd"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = ["Accept" : "application/json", "Content-Type" : "application/json"]
+        
+        var parametersData:Data?
+        do {
+            parametersData = try JSONSerialization.data(withJSONObject: withParameters, options: [])
+        } catch {
+            print(error.localizedDescription)
+        }
+        
+        urlRequest?.httpBody = parametersData!
+        
+        let task = URLSession.shared.dataTask(with: urlRequest!) { data, response, error in
+            
+            let result: (response: NSDictionary?, error: String?) = self.checkResponse(response: response as? HTTPURLResponse, data: data, error: error)
+            completion(result.response, self.catchError(response: result.response))
+        }
+        task.resume()
+    }
+    
+    func getStatisticsPC(withParameters: [String: Any], completion: @escaping (_ responce: NSDictionary?, _ error: NetworkError?) -> ()) {
+        
+        let api = "/Services/ContactCenter/json/getstatisticspc"
+        urlRequest = URLRequest(url: URL(string: SERVER_BASE_URL + api)!)
+        urlRequest?.httpMethod = "POST"
+        urlRequest?.allHTTPHeaderFields = ["Accept" : "application/json", "Content-Type" : "application/json"]
         
         var parametersData:Data?
         do {

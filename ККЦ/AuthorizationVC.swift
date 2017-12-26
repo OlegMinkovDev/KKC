@@ -7,9 +7,13 @@
 //
 
 import UIKit
+import FacebookCore
+import FacebookLogin
+import FBSDKCoreKit
+import FBSDKLoginKit
 
 class AuthorizationVC: UIViewController, UITextFieldDelegate, UIScrollViewDelegate {
-
+    
     @IBOutlet weak var scrollView: UIScrollView!
     @IBOutlet weak var emailTextField: UITextField!
     @IBOutlet weak var passwordTextField: UITextField!
@@ -28,8 +32,10 @@ class AuthorizationVC: UIViewController, UITextFieldDelegate, UIScrollViewDelega
         emailTextField.tintColor = .white
         passwordTextField.tintColor = .white
         
-        let screenSingleTap = UITapGestureRecognizer(target: self, action: #selector(keyboardWillHide))
+        let screenSingleTap = UITapGestureRecognizer(target: self, action: #selector(screenTapAction))
         view.addGestureRecognizer(screenSingleTap)
+        
+        scrollView.isScrollEnabled = false
         
         getCities()
         registerForKeyboardNotifications()
@@ -59,8 +65,14 @@ class AuthorizationVC: UIViewController, UITextFieldDelegate, UIScrollViewDelega
             
             NetworkManager.shared.verifyCredentials(headers: headers, completion: { (response, error) in
                 
-                guard error == nil else {
+                guard error == nil, response != nil else {
+                    
                     ErrorManager.shered.handleAnError(error: error!, viewController: self)
+                    
+                    if error == NetworkError.authenticationFailed {
+                        self.showAlert(withTitle: "Помилка", message: "Неправильний логiн або пароль")
+                    }
+                    
                     return
                 }
                 
@@ -76,8 +88,32 @@ class AuthorizationVC: UIViewController, UITextFieldDelegate, UIScrollViewDelega
         }
     }
     
+    @IBAction func logInViaFacebook(_ sender: Any) {
+        
+        let loginManager = LoginManager()
+        
+        loginManager.logIn([ .publicProfile, .email ], viewController: self) { loginResult in
+            
+            switch loginResult {
+                
+            case .failed(let error):
+                print(error)
+                
+            case .cancelled:
+                print("User cancelled login.")
+                
+            case .success(let grantedPermissions, let declinedPermissions, let accessToken):
+                self.verifyFbCredentials(accessToken: accessToken)
+            }
+        }
+    }
+    
     @IBAction func goToRegistration(_ button: UIButton) {
         performSegue(withIdentifier: "toRegistrationVC", sender: self)
+    }
+    
+    @objc func screenTapAction() {
+        view.endEditing(true)
     }
     
     // MARK: NotificationCenter & Keybourd Events
@@ -106,9 +142,7 @@ class AuthorizationVC: UIViewController, UITextFieldDelegate, UIScrollViewDelega
     }
     
     @objc func keyboardWillHide(_ notification: Notification) {
-        
         scrollView.contentInset = UIEdgeInsets(top: 64.0, left: 0.0, bottom: 0, right: 0.0)
-        scrollView.isScrollEnabled = true
     }
     
     @objc func keyboardDidShow(_ notification: Notification) {
@@ -131,19 +165,35 @@ class AuthorizationVC: UIViewController, UITextFieldDelegate, UIScrollViewDelega
     
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool  {
         
-        if textField == emailTextField {
-            
+        /*if textField == emailTextField {
+    
             let allowLetters = CharacterSet.letters
             let allowDigits = CharacterSet.decimalDigits
             let allowSymbol = CharacterSet(charactersIn: "-_@.").inverted
-            let charactersSet = CharacterSet(charactersIn: string)
             
-            if allowLetters.isSuperset(of: charactersSet) || allowDigits.isSuperset(of: charactersSet) || string.rangeOfCharacter(from: allowSymbol) == nil {
-                return true
+            for char in string.characters {
+                print(String(char))
+                let charactersSet = CharacterSet(charactersIn: String(char))
+                
+                if allowLetters.isSuperset(of: charactersSet) /*&& !allowDigits.isSuperset(of: charactersSet) && string.rangeOfCharacter(from: allowSymbol) != nil*/ {
+                    print("letter")
+                    // return false
+                }
+                
+                if /*!allowLetters.isSuperset(of: charactersSet) && !*/allowDigits.isSuperset(of: charactersSet)/* && string.rangeOfCharacter(from: allowSymbol) != nil*/ {
+                    print("digit")
+                    //return false
+                }
+                
+                if /*!allowLetters.isSuperset(of: charactersSet) && !allowDigits.isSuperset(of: charactersSet) && */string.rangeOfCharacter(from: allowSymbol) == nil {
+                    print("symbol")
+                    //return false
+                }
             }
+    
             
-            return false
-        }
+            return true
+        }*/
         
         let currentCharacterCount = textField.text?.characters.count ?? 0
         if (range.length + range.location > currentCharacterCount){
@@ -187,18 +237,132 @@ class AuthorizationVC: UIViewController, UITextFieldDelegate, UIScrollViewDelega
                 return
             }
             
-            let listCities = response!["list"] as! [NSDictionary]
+            var cityArray = [City]()
             
-            listCities.forEach({ (dictionary) in
+            let listCities = response!["list"] as! [NSDictionary]
+            for dictionary in listCities {
                 
                 let city = City(dictionary: dictionary)
+                cityArray.append(city)
+            }
+            
+            SettingManager.shered.saveCityId(cityId: cityArray[0].id!)
+            SettingManager.shered.saveCities(cities: cityArray)
+        }
+    }
+    
+    func verifyFbCredentials(accessToken: AccessToken) {
+    
+        if let data = accessToken.userId?.data(using: .utf8) {
+            
+            let base64String = "BASIC " + data.base64EncodedString()
+            let headers = ["Authorization" : base64String, "Accept" : "application/json", "Content-Type" : "application/json"]
+            
+            NetworkManager.shared.verifyFbCredentials(headers: headers, completion: { (response, error) in
                 
-                if city.name == "Мариуполь" {
+                guard error == nil, response != nil else {
+                    print(response!)
+                    ErrorManager.shered.handleAnError(error: error!, viewController: self)
                     
-                    let mariupolId = city.id!
-                    SettingManager.shered.saveCityId(cityId: mariupolId)
+                    if error! == NetworkError.authenticationFailed {
+                        self.getFbProfile(accessToken: accessToken.userId!)
+                    }
+                    
+                    return
+                }
+                
+                print(response!)
+                
+                let credential = Credentials(parameters: response!)
+                SettingManager.shered.saveCredential(credential: credential)
+                
+                let mainVC = self.storyboard?.instantiateViewController(withIdentifier: "MainVCID") as! UINavigationController
+                
+                DispatchQueue.main.async {
+                    self.present(mainVC, animated: true, completion: nil)
                 }
             })
+        }
+    }
+    
+    func getFbProfile(accessToken: String) {
+        
+        let params = ["fields" : "email, first_name, last_name, gender"]
+        let graphRequest : GraphRequest = GraphRequest(graphPath: "me", parameters: params)
+        
+        graphRequest.start({ (response, result) in
+            
+            switch result {
+                
+            case .failed(let error):
+                print(error.localizedDescription)
+            
+            case .success(response: let success):
+                
+                if let result = success.dictionaryValue {
+                    print(result)
+                    var parameters = [String : Any]()
+                    
+                    if let firstName = result["first_name"] as? String {
+                        parameters["name"] = firstName
+                    }
+                    if let lastName = result["last_name"] as? String {
+                        parameters["surname"] = lastName
+                    }
+                    if let gender = result["gender"] as? String {
+                        
+                        if gender == "male" {
+                            parameters["gender"] = 1
+                        } else if gender == "female" {
+                            parameters["gender"] = 2
+                        } else {
+                            parameters["gender"] = 0
+                        }
+                    }
+                    if let email = result["email"] as? String {
+                        
+                        if email.contains("@") {
+                            parameters["Email"] = email
+                        } else {
+                            parameters["phone"] = email
+                        }
+                    }
+                    
+                    self.fbSignUp(parameters: parameters, facebookToken: accessToken)
+                }
+            }
+        })
+    }
+    
+    func fbSignUp(parameters: [String : Any], facebookToken: String) {
+        
+        let headers = ["FACEBOOK" : facebookToken, "Accept" : "application/json", "Content-Type" : "application/json"]
+        print(facebookToken)
+        NetworkManager.shared.fbSignUp(withParameters: parameters, headers: headers) { (response, error) in
+            
+            if let response = response  {
+                
+                if let code = response["code"] as? Int {
+                    
+                    if code == 104 {
+                        self.showAlert(withTitle: "Помилка", message: "Такий користувач вже існує. Можливо ви зареєструвалися через звичайну реєстрацію")
+                    }
+                
+                } else {
+                
+                    let credential = Credentials(parameters: response)
+                    SettingManager.shered.saveCredential(credential: credential)
+                    
+                    let mainVC = self.storyboard?.instantiateViewController(withIdentifier: "MainVCID") as! UINavigationController
+                    
+                    DispatchQueue.main.async {
+                        self.present(mainVC, animated: true, completion: nil)
+                    }
+                }
+            
+            } else if let error = error {
+                ErrorManager.shered.handleAnError(error: error, viewController: self)
+            }
         }
     }
 
